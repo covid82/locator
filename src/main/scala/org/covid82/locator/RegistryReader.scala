@@ -43,5 +43,9 @@ trait RegistryReader[F[_]] {
 }
 
 object RegistryReader {
-  def ftp[F[_]](config: FtpConfig): RegistryReader[F] = new FtpRegistryReader[F](config)
+  def ftp[F[_]](config: FtpConfig): RegistryReader[F] =
+    new FtpRegistryReader[F](config)
+
+  def db[F[_] : Async : ContextShift](config: DbConfig): RegistryReader[F] =
+    new DbRegistryReader[F](config)
 }

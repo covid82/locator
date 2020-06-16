@@ -13,6 +13,10 @@ env:
   JAEGER_SAMPLER_PARAM: 1
   JAEGER_REPORTER_LOG_SPANS: true
   JAEGER_ENDPOINT: "http://jaeger-collector.tracing.svc.cluster.local:14268/api/traces"
+  DB_SERVICE:     "jdbc:postgresql://postgres-db-postgresql.persistence.svc.cluster.local:5432/registry?protocolVersion=3&stringtype=unspecified&socketTimeout=300&tcpKeepAlive=true"
+  DB_DRIVER:      "org.postgresql.Driver"
+  DB_USER:        "postgres"
+  LOAD_FREQUENCY: "5minutes"
 
 # enable this flag to use knative serve to deploy the app
 knativeDeploy: false

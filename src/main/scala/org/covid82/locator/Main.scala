@@ -10,12 +10,6 @@ import fs2.concurrent.SignallingRef
 
 object Main extends IOApp {
 
-  val config: FtpConfig = FtpConfig(
-    path = "/pub/stats/ripencc/delegated-ripencc-latest",
-    host = "ftp.ripe.net", port = 21,
-    user = "anonymous", pass = ""
-  )
-
   def entryPoint[F[_] : Sync]: Resource[F, EntryPoint[F]] = Jaeger.entryPoint[F]("locator") { conf =>
     Sync[F].delay(conf
       .withSampler(SamplerConfiguration.fromEnv())
@@ -24,12 +18,25 @@ object Main extends IOApp {
     )
   }
 
+  import scala.concurrent.duration._
+  import scala.util.Try
+
+  val config: DbConfig = DbConfig(
+    url    = sys.env.getOrElse("DB_SERVICE", "jdbc:postgresql://localhost:5432/registry?protocolVersion=3&stringtype=unspecified&socketTimeout=300&tcpKeepAlive=true"),
+    driver = sys.env.getOrElse("DB_DRIVER", "org.postgresql.Driver"),
+    user   = sys.env.getOrElse("DB_USER", "postgres"),
+    pass   = sys.env.getOrElse("DB_PASS", "postgres"),
+    delay  = Try(Duration(sys.env.getOrElse("LOAD_FREQUENCY", "5minutes")))
+      .map(duration => FiniteDuration(duration.length, duration.unit))
+      .getOrElse(1.day)
+  )
+
   override def run(args: List[String]): IO[ExitCode] =
     Blocker[IO].use { implicit blocker =>
       entryPoint[IO].use { implicit entryPoint =>
         SignallingRef[IO, Option[IpRegistry]](Option.empty).flatMap { registryRef =>
           AppServer
-            .stream[IO](RegistryReader.ftp[IO](config), registryRef)
+            .stream[IO](RegistryReader.db[IO](config), registryRef)
             .compile
             .drain
             .as(ExitCode.Success)
