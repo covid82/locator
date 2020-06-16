@@ -1,16 +1,19 @@
 package org.covid82.locator
 
-import cats.effect.{ConcurrentEffect, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, Sync, Timer}
 import fs2.Stream
 import org.http4s.server.blaze.BlazeServerBuilder
-import AppRoutes._
 import org.http4s.implicits._
 
 object AppServer {
-  def stream[F[_] : ConcurrentEffect : Timer]: Stream[F, Nothing] =
-    BlazeServerBuilder[F]
-      .bindHttp(host = "0.0.0.0", port = 8080)
-      .withHttpApp(monitoringRoutes[F].orNotFound)
-      .serve
-      .drain
+  def stream[F[_] : ConcurrentEffect : ContextShift : Timer](config: FtpConfig): Stream[F, Nothing] = {
+    for {
+      registry <- RipeService[F](config).read
+      _ <- Stream.eval_(Sync[F].delay(registry.take(10).foreach(println)))
+      exitCode <- BlazeServerBuilder[F]
+        .bindHttp(8080, "0.0.0.0")
+        .withHttpApp(AppRoutes.monitoringRoutes[F].orNotFound)
+        .serve
+    } yield exitCode
+  }.drain
 }
