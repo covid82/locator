@@ -24,18 +24,24 @@ object AppRoutes {
   }
 
   import cats.effect.{Effect, ContextShift, Timer}
+  import natchez.EntryPoint
 
   def apiRoutes[F[_] : Effect : ContextShift : Timer](
     ripeService: RipeService[F], registry: IpRegistry
-  ): HttpRoutes[F] = {
+  )(implicit entryPoint: EntryPoint[F]): HttpRoutes[F] = {
     val dsl = new Http4sDsl[F] {}
     import dsl._
     import org.http4s.circe.CirceEntityEncoder._
     import io.circe.generic.auto._
+    import cats.syntax.apply._
     HttpRoutes.of[F] {
-      case GET -> Root / "api" / "locate" / InetAddressVar(ip) => ripeService.find(ip)(registry) match {
-        case Some(country) => Ok(Location(ip, country))
-        case None => NotFound("Not Found")
+      case GET -> Root / "api" / "locate" / InetAddressVar(ip) => entryPoint.root("locate").use { span =>
+        ripeService.find(ip)(registry) match {
+          case Some(country) =>
+            span.put("ip" -> ip, "country" -> country) *> Ok(Location(ip, country))
+          case None =>
+            span.put("ip" -> ip) *> NotFound("Not Found")
+        }
       }
     }
   }
