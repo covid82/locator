@@ -2,21 +2,29 @@ package org.covid82.locator
 
 import cats.effect.{ContextShift, Effect, Timer}
 import fs2.Stream
+import cats.syntax.apply._
+import fs2.concurrent.SignallingRef
+import cats.syntax.functor._
+import cats.instances.bigInt._
 
-class RipeService[F[_] : Effect : ContextShift : Timer](config: FtpConfig) {
-  val ripe: RegistryReader[F] = RegistryReader[F](config)
+case class RipeService[F[_] : Effect : ContextShift : Timer](
+  registryReader: RegistryReader[F],
+  registryRef: SignallingRef[F, Option[IpRegistry]]) {
 
-  def read: Stream[F, IpRegistry] =
-    ripe.readRows.fold(List.empty[IpRecord]) {
-      case (acc, record) => (record.range, record.cc) :: acc
-    }.map(_.sorted.toVector)
-
-  def find(ip: String)(registry: IpRegistry): Option[String] = {
-    import cats.instances.bigInt._
-    binarySearch(registry)(RipeRecord.ipToBigInt(ip))
+  def read: F[Int] = {
+    for {
+      records <- registryReader.readRows.fold(List.empty[IpRecord]) {
+        case (acc, record) => (record.range, record.cc) :: acc
+      }
+      _ <- Stream.eval(registryRef.set(Option(records.sorted.toVector)))
+    } yield ()
+  }.compile.drain *> registryRef.get.map {
+    case None => 0
+    case Some(registry) => registry.size
   }
-}
 
-object RipeService {
-  def apply[F[_] : Effect : ContextShift : Timer](config: FtpConfig) = new RipeService[F](config)
+  def find(ip: String): F[Option[String]] = registryRef.get.map {
+    case None => Option.empty[String]
+    case Some(registry) => binarySearch(registry)(RipeRecord.ipToBigInt(ip))
+  }
 }

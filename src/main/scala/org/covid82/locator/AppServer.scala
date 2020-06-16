@@ -6,18 +6,25 @@ import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.implicits._
 import cats.syntax.semigroupk._
 import AppRoutes._
-import cats.Applicative
+import natchez.EntryPoint
+import fs2.concurrent.SignallingRef
+import cats.effect.syntax.concurrent._
 
 object AppServer {
-  import natchez.EntryPoint
 
-  def stream[F[_] : ConcurrentEffect : ContextShift : Timer](config: FtpConfig)(
-    implicit blocker: Blocker, entryPoint: EntryPoint[F]
+  def stream[F[_] : ConcurrentEffect : ContextShift : Timer](
+    registryReader: RegistryReader[F],
+    registryRef: SignallingRef[F, Option[IpRegistry]]
+  )(implicit
+    blocker: Blocker,
+    entryPoint: EntryPoint[F]
   ): Stream[F, Nothing] = {
     for {
-      ripeService <- Stream.eval(Applicative[F].pure(RipeService[F](config)))
-      registry <- ripeService.read
-      routes = monitoringRoutes[F] <+> staticFilesRoute(blocker) <+> apiRoutes[F](ripeService, registry)
+      ripeService <- Stream(RipeService[F](registryReader, registryRef))
+      _ <- Stream.eval(ripeService.read.start)
+      routes = monitoringRoutes[F](ripeService) <+>
+        staticFilesRoute(blocker) <+>
+        apiRoutes[F](ripeService)
       exitCode <- BlazeServerBuilder[F]
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(routes.orNotFound)
