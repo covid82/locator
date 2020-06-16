@@ -1,6 +1,6 @@
 package org.covid82.locator
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{Blocker, ExitCode, IO, IOApp}
 import cats.syntax.functor._
 
 object Main extends IOApp {
@@ -10,9 +10,11 @@ object Main extends IOApp {
     user = "anonymous", pass = ""
   )
 
-  override def run(args: List[String]): IO[ExitCode] = AppServer
-    .stream[IO](config)
-    .compile
-    .drain
-    .as(ExitCode.Success)
+  override def run(args: List[String]): IO[ExitCode] = Blocker[IO].use { blocker =>
+    AppServer
+      .stream[IO](config, blocker)
+      .compile
+      .drain
+      .as(ExitCode.Success)
+  }
 }

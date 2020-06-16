@@ -44,4 +44,22 @@ package object locator {
       address
     }
   }
+
+  import cats.Order
+
+  def binarySearch[A, B](xs: IndexedSeq[((A, A), B)])(x: A)(implicit order: Order[A]): Option[B] = {
+    import cats.syntax.order._
+    @scala.annotation.tailrec
+    def search(l: Int, r: Int): Option[B] = if (l == r) Option.empty else {
+      val m = (l + r) / 2
+      xs(m) match {
+        case ((ll, _), _) if x < ll => search(l, m)
+        case ((_, rr), _) if rr <= x => search(m + 1, r)
+        case (_, b) => Option(b)
+      }
+    }
+    search(0, xs.length)
+  }
+
+  case class Location(ip: String, countryCode: String)
 }
