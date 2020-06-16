@@ -3,6 +3,7 @@ val CirceVersion = "0.13.0"
 val Specs2Version = "4.9.3"
 val LogbackVersion = "1.2.3"
 val Fs2FtpVersion = "0.4.0"
+val NatchezVersion = "0.0.10"
 
 lazy val root = (project in file("."))
   .settings(
@@ -18,7 +19,9 @@ lazy val root = (project in file("."))
       "io.circe"               %% "circe-generic"       % CirceVersion,
       "org.specs2"             %% "specs2-core"         % Specs2Version % "test",
       "ch.qos.logback"         %  "logback-classic"     % LogbackVersion,
-      "com.github.regis-leray" %% "fs2-ftp"             % Fs2FtpVersion
+      "com.github.regis-leray" %% "fs2-ftp"             % Fs2FtpVersion,
+      "org.tpolecat"           %% "natchez-jaeger"      % NatchezVersion,
+      "org.tpolecat"           %% "natchez-core"        % NatchezVersion
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
@@ -32,3 +35,8 @@ scalacOptions ++= Seq(
   "-feature",
   "-Xfatal-warnings",
 )
+
+assemblyMergeStrategy in assembly := {
+  case PathList("org", "slf4j", xs@_*) => MergeStrategy.first
+  case x => (assemblyMergeStrategy in assembly).value(x)
+}

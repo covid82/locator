@@ -9,7 +9,11 @@ import AppRoutes._
 import cats.Applicative
 
 object AppServer {
-  def stream[F[_] : ConcurrentEffect : ContextShift : Timer](config: FtpConfig, blocker: Blocker): Stream[F, Nothing] = {
+  import natchez.EntryPoint
+
+  def stream[F[_] : ConcurrentEffect : ContextShift : Timer](config: FtpConfig)(
+    implicit blocker: Blocker, entryPoint: EntryPoint[F]
+  ): Stream[F, Nothing] = {
     for {
       ripeService <- Stream.eval(Applicative[F].pure(RipeService[F](config)))
       registry <- ripeService.read
