@@ -24,7 +24,7 @@ object AppServer {
     io.circe.parser.decode[Ping](sqs_msg.asInstanceOf[TextMessage].getText)
   }
 
-  val sqsConfig: SqsConfig = SqsConfig(TrimmedString.trim("registry-notification"))
+  val sqsConfig: SqsConfig = SqsConfig(TrimmedString.trim("https://sqs.eu-central-1.amazonaws.com/489683348645/registry-notification"))
 
   def stream[F[_] : ConcurrentEffect : ContextShift : Timer](
     registryReader: RegistryReader[F],
