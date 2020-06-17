@@ -30,11 +30,11 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
-          - name: DB_PASS
-            valueFrom:
-              secretKeyRef:
-                name: postgres-token
-                key:  password
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: postgres-token
+              key:  password
 {{- range $pkey, $pval := .Values.env }}
         - name: {{ $pkey }}
           value: {{ quote $pval }}
