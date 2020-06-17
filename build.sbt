@@ -44,5 +44,9 @@ scalacOptions ++= Seq(
 
 assemblyMergeStrategy in assembly := {
   case PathList("org", "slf4j", xs@_*) => MergeStrategy.first
+  case PathList("META-INF","io.netty.versions.properties") => MergeStrategy.first
+  case PathList("codegen-resources", xs@_*) => MergeStrategy.first
+  case PathList("mime.types") => MergeStrategy.first
+  case PathList("module-info.class") => MergeStrategy.first
   case x => (assemblyMergeStrategy in assembly).value(x)
 }
