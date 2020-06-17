@@ -5,6 +5,7 @@ val LogbackVersion = "1.2.3"
 val Fs2FtpVersion = "0.4.0"
 val NatchezVersion = "0.0.10"
 val DoobieVersion = "0.8.6"
+val Fs2AwsVersion = "2.28.42"
 
 lazy val root = (project in file("."))
   .settings(
@@ -18,13 +19,15 @@ lazy val root = (project in file("."))
       "org.http4s"             %% "http4s-circe"        % Http4sVersion,
       "org.http4s"             %% "http4s-dsl"          % Http4sVersion,
       "io.circe"               %% "circe-generic"       % CirceVersion,
+      "io.circe"               %% "circe-parser"        % CirceVersion,
       "org.specs2"             %% "specs2-core"         % Specs2Version % "test",
       "ch.qos.logback"         %  "logback-classic"     % LogbackVersion,
       "com.github.regis-leray" %% "fs2-ftp"             % Fs2FtpVersion,
       "org.tpolecat"           %% "natchez-jaeger"      % NatchezVersion,
       "org.tpolecat"           %% "natchez-core"        % NatchezVersion,
       "org.tpolecat"           %% "doobie-core"         % DoobieVersion,
-      "org.tpolecat"           %% "doobie-postgres"     % DoobieVersion
+      "org.tpolecat"           %% "doobie-postgres"     % DoobieVersion,
+      "io.laserdisc"           %% "fs2-aws"             % Fs2AwsVersion
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
