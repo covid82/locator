@@ -23,7 +23,6 @@ object AppServer {
   ): Stream[F, Nothing] = {
     for {
       ripeService <- Stream(RipeService[F](registryReader, registryRef))
-      _ <- Stream.eval(ripeService.read.start)
       routes = monitoringRoutes[F](ripeService) <+>
         staticFilesRoute(blocker) <+>
         apiRoutes[F](ripeService)
