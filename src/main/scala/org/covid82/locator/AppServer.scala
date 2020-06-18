@@ -9,34 +9,23 @@ import AppRoutes._
 import natchez.EntryPoint
 import fs2.concurrent.SignallingRef
 import cats.effect.syntax.concurrent._
-import fs2.aws.sqs.{SQSConsumerBuilder, SqsConfig}
-import fs2.aws.sqsStream
-import javax.jms.{Message, TextMessage}
+import fs2.aws.sqs.SqsConfig
 import cats.syntax.apply._
 import eu.timepit.refined.types.string.TrimmedString
 
 object AppServer {
 
-  case class Ping(text: String)
-
-  implicit val messageDecoder: Message => Either[Throwable, Ping] = { sqs_msg =>
-    import io.circe.generic.auto._
-    io.circe.parser.decode[Ping](sqs_msg.asInstanceOf[TextMessage].getText)
-  }
-
-  val sqsConfig: SqsConfig = SqsConfig(TrimmedString.trim("registry-notification"))
-
   def stream[F[_] : ConcurrentEffect : ContextShift : Timer](
     registryReader: RegistryReader[F],
-    registryRef: SignallingRef[F, Option[IpRegistry]]
+    registryRef: SignallingRef[F, Option[IpRegistry]],
+    watcher: Stream[F, RegistryUpdated]
   )(implicit
     blocker: Blocker,
     entryPoint: EntryPoint[F]
   ): Stream[F, Nothing] = {
     for {
       ripeService <- Stream(RipeService[F](registryReader, registryRef))
-      _ <- sqsStream[F, Ping](sqsConfig, SQSConsumerBuilder(_, _))
-        .evalMap(m => ripeService.read *> Sync[F].delay(println(m)))
+      _ <- watcher.evalMap(m => ripeService.read *> Sync[F].delay(println(m)))
       _ <- Stream.eval(ripeService.read.start)
       routes = monitoringRoutes[F](ripeService) <+>
         staticFilesRoute(blocker) <+>

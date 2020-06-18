@@ -2,11 +2,15 @@ package org.covid82.locator
 
 import cats.effect.{Blocker, ExitCode, IO, IOApp}
 import cats.syntax.functor._
-import cats.effect.{Sync, Resource}
+import cats.effect.{Resource, Sync}
+import eu.timepit.refined.types.string.TrimmedString
+import fs2.aws.sqs.{SQSConsumerBuilder, SqsConfig}
+import fs2.aws.sqsStream
 import natchez.EntryPoint
 import natchez.jaeger.Jaeger
-import io.jaegertracing.Configuration.{SamplerConfiguration,ReporterConfiguration}
+import io.jaegertracing.Configuration.{ReporterConfiguration, SamplerConfiguration}
 import fs2.concurrent.SignallingRef
+import javax.jms.{Message, TextMessage}
 
 object Main extends IOApp {
 
@@ -31,16 +35,26 @@ object Main extends IOApp {
       .getOrElse(1.day)
   )
 
-  override def run(args: List[String]): IO[ExitCode] =
+  val sqsConfig: SqsConfig = SqsConfig(TrimmedString.trim(sys.env.getOrElse("NOTIFICATION_QUEUE", "registry-notification")))
+
+  implicit val messageDecoder: Message => Either[Throwable, RegistryUpdated] = { sqs_msg =>
+    import io.circe.generic.auto._
+    io.circe.parser.decode[RegistryUpdated](sqs_msg.asInstanceOf[TextMessage].getText)
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    val registryReader = RegistryReader.db[IO](config)
+    val watcher = sqsStream[IO, RegistryUpdated](sqsConfig, SQSConsumerBuilder(_, _))
     Blocker[IO].use { implicit blocker =>
       entryPoint[IO].use { implicit entryPoint =>
         SignallingRef[IO, Option[IpRegistry]](Option.empty).flatMap { registryRef =>
           AppServer
-            .stream[IO](RegistryReader.db[IO](config), registryRef)
+            .stream[IO](registryReader, registryRef, watcher)
             .compile
             .drain
             .as(ExitCode.Success)
         }
       }
     }
+  }
 }
