@@ -45,6 +45,8 @@ package object locator {
     }
   }
 
+  case class RegistryUpdated(version: Long)
+
   import cats.Order
 
   def binarySearch[A, B](xs: IndexedSeq[((A, A), B)])(x: A)(implicit order: Order[A]): Option[B] = {
