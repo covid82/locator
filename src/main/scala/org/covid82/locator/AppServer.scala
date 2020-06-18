@@ -9,9 +9,7 @@ import AppRoutes._
 import natchez.EntryPoint
 import fs2.concurrent.SignallingRef
 import cats.effect.syntax.concurrent._
-import fs2.aws.sqs.SqsConfig
 import cats.syntax.apply._
-import eu.timepit.refined.types.string.TrimmedString
 
 object AppServer {
 
@@ -25,7 +23,7 @@ object AppServer {
   ): Stream[F, Nothing] = {
     for {
       ripeService <- Stream(RipeService[F](registryReader, registryRef))
-      _ <- watcher.evalMap(m => ripeService.read *> Sync[F].delay(println(m)))
+      _ <- watcher.evalMap(m => (ripeService.read *> Sync[F].delay(println(m))).start)
       _ <- Stream.eval(ripeService.read.start)
       routes = monitoringRoutes[F](ripeService) <+>
         staticFilesRoute(blocker) <+>
