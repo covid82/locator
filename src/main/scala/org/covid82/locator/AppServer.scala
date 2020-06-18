@@ -23,6 +23,9 @@ object AppServer {
   ): Stream[F, Nothing] = {
     for {
       ripeService <- Stream(RipeService[F](registryReader, registryRef))
+      _ <- Stream.eval(watcher.evalMap { msg =>
+        ripeService.read *> Sync[F].delay(println(msg))
+      }.compile.drain.start)
       routes = monitoringRoutes[F](ripeService) <+>
         staticFilesRoute(blocker) <+>
         apiRoutes[F](ripeService)
@@ -30,7 +33,6 @@ object AppServer {
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(routes.orNotFound)
         .serve
-      _ <- watcher.evalMap(m => ripeService.read *> Sync[F].delay(println(m)))
     } yield exitCode
   }.drain
 }
