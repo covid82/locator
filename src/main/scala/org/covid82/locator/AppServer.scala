@@ -24,7 +24,7 @@ object AppServer {
     for {
       ripeService <- Stream(RipeService[F](registryReader, registryRef))
       _ <- Stream.eval(watcher.evalMap { msg =>
-        ripeService.read *> Sync[F].delay(println(msg))
+        ripeService.read *> Sync[F].delay(println(s"Received message: $msg"))
       }.compile.drain.start)
       routes = monitoringRoutes[F](ripeService) <+>
         staticFilesRoute(blocker) <+>
